@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: postgres-dooz
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "your_password"
+      POSTGRES_DB: "dooz"
+    ports:
+      - "5412:5432"
+    volumes:
+      - postgres-data-dooz:/var/lib/postgresql/data
+
+  redis:
+    image: redis:8.2.2-alpine
+    container_name: redis-dooz
+    ports:
+      - "6312:6379"
+
+volumes:
+  postgres-data-dooz:
