@@ -41,11 +41,13 @@ func NewOTPWorkerPool(
 	}
 }
 
-func (p *OTPWorkerPool) Start(ctx context.Context) {
+func (p *OTPWorkerPool) Start(_ context.Context) {
 	p.started.Do(func() {
 		p.logger.Info("starting OTP worker pool", "workers", p.workerCount)
 
-		p.workerCtx, p.workerCancel = context.WithCancel(ctx)
+		// Workers must outlive individual HTTP/cron request contexts.
+		// They are stopped explicitly via Stop(), which calls workerCancel.
+		p.workerCtx, p.workerCancel = context.WithCancel(context.Background())
 
 		for i := 0; i < p.workerCount; i++ {
 			p.wg.Go(func() {

@@ -61,7 +61,7 @@ func (g *smsirGateway) SendOTP(ctx context.Context, phone string, code string) e
 		Mobile:     phone,
 		TemplateID: g.templateID,
 		Parameters: []parameter{
-			{Name: "code", Value: code},
+			{Name: "CODE", Value: code},
 		},
 	}
 
