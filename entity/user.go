@@ -27,6 +27,7 @@ func (r Role) String() string {
 
 type User struct {
 	ID              string `gorm:"type:uuid;primaryKey;default:uuidv7()" json:"id"`
+	UserCode        int    `gorm:"column:user_code;type:integer;uniqueIndex;not null" json:"user_code"`
 	Phone           string `gorm:"type:text;uniqueIndex" json:"phone"`
 	Email           string `gorm:"type:text;uniqueIndex;not null" json:"email,omitempty"`
 	Fullname        string `gorm:"type:text;not null" json:"fullname"`
@@ -34,7 +35,9 @@ type User struct {
 	Role            Role   `gorm:"type:smallint;not null;default:1" json:"role"`
 	IsEmailVerified bool   `gorm:"column:is_email_verified;type:boolean;not null;default:false" json:"-"`
 	IsPhoneVerified bool   `gorm:"column:is_phone_verified;type:boolean;not null;default:false" json:"-"`
-	Avatar          string `gorm:"type:text;default:''" json:"avatar"`
+	CurrentTheme    int    `gorm:"column:current_theme;type:smallint;not null;default:1" json:"current_theme"`
+	CurrentXOShape  int    `gorm:"column:current_xo_shape;type:smallint;not null;default:1" json:"current_xo_shape"`
+	CurrentAvatar   int    `gorm:"column:current_avatar;type:smallint;not null;default:1" json:"current_avatar"`
 	Coins           int    `gorm:"type:integer;not null;default:0" json:"coins"`
 	Gems            int    `gorm:"type:integer;not null;default:0" json:"gems"`
 	XCount          int    `gorm:"column:x_count;type:integer;not null;default:0" json:"x_count"`
@@ -44,7 +47,6 @@ type User struct {
 	Draws           int    `gorm:"type:integer;not null;default:0" json:"draws"`
 	IsOnline        bool   `gorm:"column:is_online;type:boolean;not null;default:false" json:"is_online"`
 	LastSeenAt      int64  `gorm:"column:last_seen_at;type:bigint" json:"last_seen_at"`
-	CreatedAt       int64  `gorm:"column:created_at;type:bigint;not null" json:"created_at"`
 	UpdatedAt       int64  `gorm:"column:updated_at;type:bigint;not null" json:"updated_at"`
 	DeletedAt       int64  `gorm:"column:deleted_at;type:bigint" json:"deleted_at"`
 	BlockedAt       int64  `gorm:"column:blocked_at;type:bigint" json:"blocked_at"`
@@ -56,18 +58,21 @@ func (User) TableName() string {
 
 func (u *User) ToDTO() *dto.UserDTO {
 	return &dto.UserDTO{
-		ID:         u.ID,
-		Phone:      u.Phone,
-		Email:      u.Email,
-		Fullname:   u.Fullname,
-		Role:       u.Role.String(),
-		Avatar:     u.Avatar,
-		Coins:      u.Coins,
-		Gems:       u.Gems,
-		Wins:       u.Wins,
-		Losses:     u.Losses,
-		Draws:      u.Draws,
-		IsOnline:   u.IsOnline,
-		LastSeenAt: u.LastSeenAt,
+		ID:             u.ID,
+		UserCode:       u.UserCode,
+		Phone:          u.Phone,
+		Email:          u.Email,
+		Fullname:       u.Fullname,
+		Role:           u.Role.String(),
+		CurrentTheme:   u.CurrentTheme,
+		CurrentXOShape: u.CurrentXOShape,
+		CurrentAvatar:  u.CurrentAvatar,
+		Coins:          u.Coins,
+		Gems:           u.Gems,
+		Wins:           u.Wins,
+		Losses:         u.Losses,
+		Draws:          u.Draws,
+		IsOnline:       u.IsOnline,
+		LastSeenAt:     u.LastSeenAt,
 	}
 }

@@ -1,7 +1,7 @@
 package dto
 
 type LoginRequest struct {
-	Email      string `json:"email" binding:"required,email,max=254"`
+	Phone      string `json:"phone" binding:"required,iranian_phone"`
 	Password   string `json:"password" binding:"required"`
 	DeviceType string `json:"device_type" binding:"required,oneof=web mobile telegram"`
 	Remember   bool   `json:"remember"`

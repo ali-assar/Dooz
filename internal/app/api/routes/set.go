@@ -13,6 +13,7 @@ var RouteSet = wire.NewSet(
 	NewChatRoutes,
 	NewLeaderboardRoutes,
 	NewAchievementRoutes,
+	NewShopRoutes,
 	NewCronRoutes,
 	NewRouter,
 )

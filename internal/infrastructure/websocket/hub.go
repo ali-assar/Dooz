@@ -11,13 +11,17 @@ import (
 type MessageType string
 
 const (
-	TypeMove       MessageType = "move"
-	TypeGameStart  MessageType = "game_start"
-	TypeGameEnd    MessageType = "game_end"
-	TypeChat       MessageType = "chat"
-	TypePresence   MessageType = "presence"
-	TypeMatchFound MessageType = "match_found"
-	TypeError      MessageType = "error"
+	TypeMove              MessageType = "move"
+	TypeGameStart         MessageType = "game_start"
+	TypeGameEnd           MessageType = "game_end"
+	TypeChat              MessageType = "chat"
+	TypePresence          MessageType = "presence"
+	TypeMatchFound        MessageType = "match_found"
+	TypeChallengeReceived MessageType = "challenge_received"
+	TypeChallengeAccepted MessageType = "challenge_accepted"
+	TypeChallengeRejected MessageType = "challenge_rejected"
+	TypeChallengeCanceled MessageType = "challenge_canceled"
+	TypeError             MessageType = "error"
 )
 
 type Message struct {
@@ -114,6 +118,18 @@ func (h *Hub) IsOnline(userID string) bool {
 	defer h.mu.RUnlock()
 	_, ok := h.clients[userID]
 	return ok
+}
+
+// ConnectedUserIDs returns all currently connected user IDs.
+func (h *Hub) ConnectedUserIDs() []string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	ids := make([]string, 0, len(h.clients))
+	for userID := range h.clients {
+		ids = append(ids, userID)
+	}
+	return ids
 }
 
 // WritePump pumps messages from the hub to the websocket connection.

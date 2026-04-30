@@ -64,7 +64,7 @@ func (r *boardRepository) GetByUserID(ctx context.Context, userID string, limit 
 	var boards []*entity.Board
 	result := r.t.DB(ctx).
 		Where("player_x_id = ? OR player_o_id = ?", userID, userID).
-		Order("created_at DESC").
+		Order("id DESC").
 		Limit(limit).Find(&boards)
 	return boards, result.Error
 }
@@ -73,7 +73,7 @@ func (r *boardRepository) GetWaitingBoard(ctx context.Context, excludeUserID str
 	var board entity.Board
 	result := r.t.DB(ctx).
 		Where("status = ? AND player_x_id != ?", entity.BoardStatusWaiting, excludeUserID).
-		Order("created_at ASC").
+		Order("id ASC").
 		First(&board)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {

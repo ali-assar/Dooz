@@ -23,6 +23,7 @@ var (
 type Repository interface {
 	Create(ctx context.Context, user *entity.User) error
 	GetByID(ctx context.Context, id string) (*entity.User, error)
+	GetByUserCode(ctx context.Context, userCode int) (*entity.User, error)
 	Update(ctx context.Context, user *entity.User) error
 	Delete(ctx context.Context, id string) error
 	GetByPhone(ctx context.Context, phone string) (*entity.User, error)
@@ -32,6 +33,9 @@ type Repository interface {
 	MarkEmailVerified(ctx context.Context, id string) error
 	UpdateStats(ctx context.Context, userID string, wins, losses, draws, xCount, oCount, coins, gems int) error
 	SetOnline(ctx context.Context, userID string, online bool) error
+	UpdateCurrentStyle(ctx context.Context, userID string, theme, xoShape, avatar *int) error
+	AddBalance(ctx context.Context, userID string, coins, gems int) error
+	DeductBalance(ctx context.Context, userID string, currency byte, amount int) error
 }
 
 type userRepository struct {
@@ -59,6 +63,18 @@ func (r *userRepository) Create(ctx context.Context, user *entity.User) error {
 func (r *userRepository) GetByID(ctx context.Context, id string) (*entity.User, error) {
 	var user entity.User
 	result := r.t.DB(ctx).Where("id = ? AND deleted_at = 0", id).First(&user)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, result.Error
+	}
+	return &user, nil
+}
+
+func (r *userRepository) GetByUserCode(ctx context.Context, userCode int) (*entity.User, error) {
+	var user entity.User
+	result := r.t.DB(ctx).Where("user_code = ? AND deleted_at = 0", userCode).First(&user)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, ErrNotFound
@@ -195,4 +211,72 @@ func (r *userRepository) SetOnline(ctx context.Context, userID string, online bo
 	}
 	result := r.t.DB(ctx).Model(&entity.User{}).Where("id = ?", userID).Updates(updates)
 	return result.Error
+}
+
+func (r *userRepository) UpdateCurrentStyle(ctx context.Context, userID string, theme, xoShape, avatar *int) error {
+	updates := map[string]interface{}{}
+	if theme != nil {
+		updates["current_theme"] = *theme
+	}
+	if xoShape != nil {
+		updates["current_xo_shape"] = *xoShape
+	}
+	if avatar != nil {
+		updates["current_avatar"] = *avatar
+	}
+	if len(updates) == 0 {
+		return nil
+	}
+	updates["updated_at"] = gorm.Expr("extract(epoch from now())::bigint")
+	result := r.t.DB(ctx).Model(&entity.User{}).Where("id = ?", userID).Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (r *userRepository) AddBalance(ctx context.Context, userID string, coins, gems int) error {
+	result := r.t.DB(ctx).Model(&entity.User{}).
+		Where("id = ?", userID).
+		Updates(map[string]interface{}{
+			"coins":      gorm.Expr("coins + ?", coins),
+			"gems":       gorm.Expr("gems + ?", gems),
+			"updated_at": gorm.Expr("extract(epoch from now())::bigint"),
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (r *userRepository) DeductBalance(ctx context.Context, userID string, currency byte, amount int) error {
+	var result *gorm.DB
+	if currency == 1 {
+		result = r.t.DB(ctx).Model(&entity.User{}).
+			Where("id = ? AND coins >= ?", userID, amount).
+			Updates(map[string]interface{}{
+				"coins":      gorm.Expr("coins - ?", amount),
+				"updated_at": gorm.Expr("extract(epoch from now())::bigint"),
+			})
+	} else {
+		result = r.t.DB(ctx).Model(&entity.User{}).
+			Where("id = ? AND gems >= ?", userID, amount).
+			Updates(map[string]interface{}{
+				"gems":       gorm.Expr("gems - ?", amount),
+				"updated_at": gorm.Expr("extract(epoch from now())::bigint"),
+			})
+	}
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return appErrors.NewAppError("INSUFFICIENT_BALANCE", "Not enough balance", 400)
+	}
+	return nil
 }

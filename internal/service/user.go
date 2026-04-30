@@ -17,6 +17,7 @@ import (
 
 type UserService interface {
 	GetUserByID(ctx context.Context, userID string) (*dto.UserDTO, error)
+	GetUserByCode(ctx context.Context, userCode int) (*dto.UserDTO, error)
 	GetAllUsers(ctx context.Context, req *pagination.Request) (*pagination.Response[*dto.UserDTO], error)
 	ChangePassword(ctx context.Context, userID string, newPassword string) error
 	UpdateUser(ctx context.Context, userID string, req *dto.UpdateUserRequest, isAdmin bool) (*dto.UserDTO, error)
@@ -44,6 +45,23 @@ func (s *userService) GetUserByID(ctx context.Context, userID string) (*dto.User
 			return nil, userRepo.ErrNotFound
 		}
 		lg.Error("failed to get user", "error", err)
+		return nil, err
+	}
+	if user.DeletedAt > 0 {
+		return nil, userRepo.ErrNotFound
+	}
+	return user.ToDTO(), nil
+}
+
+func (s *userService) GetUserByCode(ctx context.Context, userCode int) (*dto.UserDTO, error) {
+	lg := s.logger.With("method", "GetUserByCode", "userCode", userCode)
+
+	user, err := s.userRepo.GetByUserCode(ctx, userCode)
+	if err != nil {
+		if errors.Is(err, userRepo.ErrNotFound) {
+			return nil, userRepo.ErrNotFound
+		}
+		lg.Error("failed to get user by code", "error", err)
 		return nil, err
 	}
 	if user.DeletedAt > 0 {
@@ -129,11 +147,6 @@ func (s *userService) UpdateUser(ctx context.Context, userID string, req *dto.Up
 		user.Fullname = req.Fullname
 		updated = true
 	}
-	if req.Avatar != "" && req.Avatar != user.Avatar {
-		user.Avatar = req.Avatar
-		updated = true
-	}
-
 	if isAdmin {
 		if req.Phone != "" && req.Phone != user.Phone {
 			existing, err := s.userRepo.GetByPhone(ctx, req.Phone)

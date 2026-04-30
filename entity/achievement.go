@@ -21,8 +21,6 @@ type Achievement struct {
 	RequirementValue int             `gorm:"column:requirement_value;type:integer;not null" json:"requirement_value"`
 	CoinReward       int             `gorm:"column:coin_reward;type:integer;not null;default:0" json:"coin_reward"`
 	GemReward        int             `gorm:"column:gem_reward;type:integer;not null;default:0" json:"gem_reward"`
-	CreatedAt        int64           `gorm:"column:created_at;type:bigint;not null" json:"created_at"`
-	UpdatedAt        int64           `gorm:"column:updated_at;type:bigint;not null" json:"updated_at"`
 }
 
 func (Achievement) TableName() string {

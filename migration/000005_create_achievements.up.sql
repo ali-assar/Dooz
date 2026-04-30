@@ -7,9 +7,7 @@ CREATE TABLE achievements (
         -- 1=wins 2=draws 3=friends 4=games_played 5=win_streak
     requirement_value INTEGER NOT NULL,
     coin_reward       INTEGER NOT NULL DEFAULT 0,
-    gem_reward        INTEGER NOT NULL DEFAULT 0,
-    created_at        BIGINT NOT NULL,
-    updated_at        BIGINT NOT NULL
+    gem_reward        INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE user_achievements (
@@ -22,12 +20,12 @@ CREATE TABLE user_achievements (
 );
 
 -- Seed initial achievements
-INSERT INTO achievements (id, name, description, icon, requirement_type, requirement_value, coin_reward, gem_reward, created_at, updated_at) VALUES
-    (uuidv7(), 'First Win',        'Win your first game',       '🏆', 1, 1,   50,  0,  extract(epoch from now())::bigint, extract(epoch from now())::bigint),
-    (uuidv7(), 'Hat Trick',        'Win 3 games',               '🎩', 1, 3,   100, 0,  extract(epoch from now())::bigint, extract(epoch from now())::bigint),
-    (uuidv7(), 'Victor',           'Win 10 games',              '🥇', 1, 10,  200, 1,  extract(epoch from now())::bigint, extract(epoch from now())::bigint),
-    (uuidv7(), 'Champion',         'Win 50 games',              '👑', 1, 50,  500, 5,  extract(epoch from now())::bigint, extract(epoch from now())::bigint),
-    (uuidv7(), 'Peacemaker',       'Draw 5 games',              '🤝', 2, 5,   75,  0,  extract(epoch from now())::bigint, extract(epoch from now())::bigint),
-    (uuidv7(), 'Social Butterfly', 'Add 5 friends',             '🦋', 3, 5,   100, 0,  extract(epoch from now())::bigint, extract(epoch from now())::bigint),
-    (uuidv7(), 'Veteran',          'Play 25 games',             '🎖️', 4, 25,  150, 0,  extract(epoch from now())::bigint, extract(epoch from now())::bigint),
-    (uuidv7(), 'Win Streak',       'Win 3 games in a row',      '🔥', 5, 3,   200, 2,  extract(epoch from now())::bigint, extract(epoch from now())::bigint);
+INSERT INTO achievements (id, name, description, icon, requirement_type, requirement_value, coin_reward, gem_reward) VALUES
+    (uuidv7(), 'First Win',        'Win your first game',       '🏆', 1, 1,   50,  0),
+    (uuidv7(), 'Hat Trick',        'Win 3 games',               '🎩', 1, 3,   100, 0),
+    (uuidv7(), 'Victor',           'Win 10 games',              '🥇', 1, 10,  200, 1),
+    (uuidv7(), 'Champion',         'Win 50 games',              '👑', 1, 50,  500, 5),
+    (uuidv7(), 'Peacemaker',       'Draw 5 games',              '🤝', 2, 5,   75,  0),
+    (uuidv7(), 'Social Butterfly', 'Add 5 friends',             '🦋', 3, 5,   100, 0),
+    (uuidv7(), 'Veteran',          'Play 25 games',             '🎖️', 4, 25,  150, 0),
+    (uuidv7(), 'Win Streak',       'Win 3 games in a row',      '🔥', 5, 3,   200, 2);

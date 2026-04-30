@@ -39,6 +39,7 @@ func (r *UserRoutes) SetupRoutes(router *gin.RouterGroup) {
 		auth.GET("/me", r.userController.GetMe)
 		auth.PATCH("/me", r.userController.UpdateUser)
 		auth.PUT("/me/change-password", r.userController.ChangePassword)
+		auth.GET("/by-code/:code", r.userController.GetUserByCode)
 		auth.GET("/:id", r.userController.GetUserByID)
 	}
 }

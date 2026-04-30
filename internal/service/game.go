@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"math/rand"
 	"time"
 
 	"dooz/entity"
@@ -100,11 +101,10 @@ func (s *gameService) MakeMove(ctx context.Context, boardID, userID string, posi
 	now := time.Now().Unix()
 
 	move := &entity.Move{
-		BoardID:   boardID,
-		UserID:    userID,
-		Position:  position,
-		Symbol:    symbol,
-		CreatedAt: now,
+		BoardID:  boardID,
+		UserID:   userID,
+		Position: position,
+		Symbol:   symbol,
 	}
 	if err := s.moveRepo.Create(ctx, move); err != nil {
 		return nil, err
@@ -117,9 +117,13 @@ func (s *gameService) MakeMove(ctx context.Context, boardID, userID string, posi
 		board.Status = entity.BoardStatusCompleted
 		board.EndedAt = now
 		if winner == "X" {
-			board.WinnerID = board.PlayerXID
+			winnerID := board.PlayerXID
+			board.WinnerID = &winnerID
 		} else if winner == "O" {
-			board.WinnerID = board.PlayerOID
+			winnerID := board.PlayerOID
+			board.WinnerID = &winnerID
+		} else {
+			board.WinnerID = nil
 		}
 		s.updatePlayerStats(ctx, board, lg)
 	} else {
@@ -151,7 +155,8 @@ func (s *gameService) MakeMove(ctx context.Context, boardID, userID string, posi
 		)
 	}
 
-	if board.IsBotGame && board.Status == entity.BoardStatusInProgress {
+	// Schedule bot move only when game is active and bot is the next turn.
+	if board.IsBotGame && board.Status == entity.BoardStatusInProgress && board.CurrentTurn == board.PlayerOID {
 		go s.makeBotMove(context.Background(), board)
 	}
 
@@ -162,17 +167,24 @@ func (s *gameService) MakeMove(ctx context.Context, boardID, userID string, posi
 }
 
 func (s *gameService) makeBotMove(ctx context.Context, board *entity.Board) {
+	lg := s.logger.With("method", "makeBotMove", "boardID", board.ID)
 	time.Sleep(800 * time.Millisecond)
 
 	pos := bestMove(board.BoardState)
 	if pos == -1 {
+		lg.Warn("bot move skipped: no available position")
 		return
 	}
 
 	ctx2, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, _ = s.MakeMove(ctx2, board.ID, board.PlayerOID, pos)
+	lg.Info("bot attempting move", "position", pos, "botUserID", board.PlayerOID)
+	if _, err := s.MakeMove(ctx2, board.ID, board.PlayerOID, pos); err != nil {
+		lg.Error("bot move failed", "error", err)
+		return
+	}
+	lg.Info("bot move applied", "position", pos)
 }
 
 func (s *gameService) updatePlayerStats(ctx context.Context, board *entity.Board, lg *slog.Logger) {
@@ -182,12 +194,12 @@ func (s *gameService) updatePlayerStats(ctx context.Context, board *entity.Board
 	playerX := board.PlayerXID
 	playerO := board.PlayerOID
 
-	if board.WinnerID == playerX {
+	if board.WinnerID != nil && *board.WinnerID == playerX {
 		_ = s.userRepo.UpdateStats(ctx, playerX, 1, 0, 0, 1, 0, coinWin, 0)
 		if playerO != "" && !board.IsBotGame {
 			_ = s.userRepo.UpdateStats(ctx, playerO, 0, 1, 0, 0, 1, 0, 0)
 		}
-	} else if board.WinnerID == playerO && !board.IsBotGame {
+	} else if board.WinnerID != nil && *board.WinnerID == playerO && !board.IsBotGame {
 		_ = s.userRepo.UpdateStats(ctx, playerO, 1, 0, 0, 0, 1, coinWin, 0)
 		_ = s.userRepo.UpdateStats(ctx, playerX, 0, 1, 0, 1, 0, 0, 0)
 	} else {
@@ -216,9 +228,11 @@ func (s *gameService) Resign(ctx context.Context, boardID, userID string) (*dto.
 	board.EndedAt = now
 	board.UpdatedAt = now
 	if board.PlayerXID == userID {
-		board.WinnerID = board.PlayerOID
+		winnerID := board.PlayerOID
+		board.WinnerID = &winnerID
 	} else {
-		board.WinnerID = board.PlayerXID
+		winnerID := board.PlayerXID
+		board.WinnerID = &winnerID
 	}
 
 	if err := s.boardRepo.Update(ctx, board); err != nil {
@@ -269,6 +283,22 @@ func isBoardFull(state string) bool {
 
 // bestMove uses minimax to find the optimal move for the bot ('O').
 func bestMove(state string) int {
+	available := make([]int, 0, 9)
+	for i := 0; i < 9; i++ {
+		if state[i] == '-' {
+			available = append(available, i)
+		}
+	}
+	if len(available) == 0 {
+		return -1
+	}
+
+	// Make bot easier: 65% of the time choose a random legal move.
+	// Remaining 35% still uses minimax so bot is not completely trivial.
+	if rand.Intn(100) < 65 {
+		return available[rand.Intn(len(available))]
+	}
+
 	best := -1000
 	bestPos := -1
 	for i := 0; i < 9; i++ {

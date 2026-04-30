@@ -17,6 +17,7 @@ type Router struct {
 	chatRoutes        *ChatRoutes
 	leaderboardRoutes *LeaderboardRoutes
 	achievementRoutes *AchievementRoutes
+	shopRoutes        *ShopRoutes
 	cronRoutes        *CronRoutes
 	corsMiddleware    *middleware.CORSMiddleware
 	logger            *slog.Logger
@@ -31,6 +32,7 @@ func NewRouter(
 	chatRoutes *ChatRoutes,
 	leaderboardRoutes *LeaderboardRoutes,
 	achievementRoutes *AchievementRoutes,
+	shopRoutes *ShopRoutes,
 	cronRoutes *CronRoutes,
 	corsMiddleware *middleware.CORSMiddleware,
 	logger *slog.Logger,
@@ -44,6 +46,7 @@ func NewRouter(
 		chatRoutes:        chatRoutes,
 		leaderboardRoutes: leaderboardRoutes,
 		achievementRoutes: achievementRoutes,
+		shopRoutes:        shopRoutes,
 		cronRoutes:        cronRoutes,
 		corsMiddleware:    corsMiddleware,
 		logger:            logger,
@@ -65,6 +68,7 @@ func (r *Router) SetupRouter() *gin.Engine {
 		r.chatRoutes.SetupRoutes(apiV1.Group("/chat"))
 		r.leaderboardRoutes.SetupRoutes(apiV1.Group("/leaderboard"))
 		r.achievementRoutes.SetupRoutes(apiV1.Group("/achievements"))
+		r.shopRoutes.SetupRoutes(apiV1.Group("/shop"))
 		r.cronRoutes.SetupRoutes(apiV1.Group("/cron"))
 	}
 

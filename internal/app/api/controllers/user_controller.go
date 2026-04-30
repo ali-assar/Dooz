@@ -15,13 +15,15 @@ import (
 
 type UserController struct {
 	userService service.UserService
+	shopService service.ShopService
 	logger      *slog.Logger
 	t           tx.Transaction
 }
 
-func NewUserController(userService service.UserService, logger *slog.Logger, t tx.Transaction) *UserController {
+func NewUserController(userService service.UserService, shopService service.ShopService, logger *slog.Logger, t tx.Transaction) *UserController {
 	return &UserController{
 		userService: userService,
+		shopService: shopService,
 		logger:      logger.With("layer", "UserController"),
 		t:           t,
 	}
@@ -48,6 +50,14 @@ func (c *UserController) GetMe(ctx *gin.Context) {
 		_ = ctx.Error(err)
 		return
 	}
+	inventory, err := c.shopService.GetInventory(reqCtx, userIDStr)
+	if err != nil {
+		_ = ctx.Error(err)
+		return
+	}
+	user.OwnedThemes = inventory.Themes
+	user.OwnedXOShapes = inventory.XOShapes
+	user.OwnedAvatars = inventory.Avatars
 
 	response.SuccessWithData(ctx, 200, user)
 }
@@ -71,6 +81,33 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 	}
 
 	user, err := c.userService.GetUserByID(reqCtx, id)
+	if err != nil {
+		_ = ctx.Error(err)
+		return
+	}
+
+	response.SuccessWithData(ctx, 200, user)
+}
+
+// GetUserByCode returns a user by user code.
+//
+//	@Summary	Get user by code
+//	@Tags		users
+//	@Security	BearerAuth
+//	@Param		code	path		int	true	"User code (6 digits)"
+//	@Success	200		{object}	response.Response{data=dto.UserDTO}
+//	@Router		/users/by-code/{code} [get]
+func (c *UserController) GetUserByCode(ctx *gin.Context) {
+	reqCtx, cancel := context.WithTimeout(ctx.Request.Context(), constants.DefaultRequestTimeout)
+	defer cancel()
+
+	var req dto.GetUserByCodeRequest
+	if err := ctx.ShouldBindUri(&req); err != nil {
+		response.ValidationError(ctx, response.ErrInvalidRequest)
+		return
+	}
+
+	user, err := c.userService.GetUserByCode(reqCtx, req.Code)
 	if err != nil {
 		_ = ctx.Error(err)
 		return

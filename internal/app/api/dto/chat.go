@@ -7,7 +7,12 @@ type ChatMessageDTO struct {
 	BoardID    string `json:"board_id,omitempty"`
 	Content    string `json:"content"`
 	ReadAt     int64  `json:"read_at,omitempty"`
-	CreatedAt  int64  `json:"created_at"`
+}
+
+type ChatRealtimePayload struct {
+	ChatType string          `json:"chat_type"`
+	BoardID  string          `json:"board_id,omitempty"`
+	Message  *ChatMessageDTO `json:"message"`
 }
 
 type SendDMRequest struct {
@@ -23,7 +28,7 @@ type SendGameChatRequest struct {
 type ChatHistoryRequest struct {
 	UserID string `uri:"user_id" binding:"required"`
 	Limit  int    `form:"limit,default=50" binding:"omitempty,min=1,max=100"`
-	Before int64  `form:"before"`
+	Before string `form:"before"`
 }
 
 type GameChatHistoryRequest struct {

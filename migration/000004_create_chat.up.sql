@@ -4,9 +4,8 @@ CREATE TABLE chat_messages (
     receiver_id UUID REFERENCES users(id) ON DELETE CASCADE,
     board_id    UUID REFERENCES boards(id) ON DELETE CASCADE,
     content     TEXT NOT NULL,
-    read_at     BIGINT,
-    created_at  BIGINT NOT NULL
+    read_at     BIGINT
 );
 
-CREATE INDEX idx_chat_dm      ON chat_messages (sender_id, receiver_id, created_at DESC);
-CREATE INDEX idx_chat_game    ON chat_messages (board_id, created_at ASC);
+CREATE INDEX idx_chat_dm      ON chat_messages (sender_id, receiver_id, id DESC);
+CREATE INDEX idx_chat_game    ON chat_messages (board_id, id ASC);

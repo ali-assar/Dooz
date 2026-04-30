@@ -9,7 +9,7 @@ services:
     ports:
       - "5412:5432"
     volumes:
-      - postgres-data-dooz:/var/lib/postgresql/data
+      - postgres-data-dooz:/var/lib/postgresql
 
   redis:
     image: redis:8.2.2-alpine

@@ -18,7 +18,6 @@ type Session struct {
 	IPAddress        *string    `gorm:"column:ip_address;type:inet" json:"ip_address,omitempty"`
 	DeviceType       DeviceType `gorm:"column:device_type;type:smallint;not null" json:"device_type"`
 	LastActivityAt   int64      `gorm:"column:last_activity_at;type:bigint;not null" json:"last_activity_at"`
-	CreatedAt        int64      `gorm:"column:created_at;type:bigint;not null" json:"created_at"`
 }
 
 func (Session) TableName() string {

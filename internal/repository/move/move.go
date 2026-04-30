@@ -26,6 +26,6 @@ func (r *moveRepository) Create(ctx context.Context, move *entity.Move) error {
 
 func (r *moveRepository) GetByBoardID(ctx context.Context, boardID string) ([]*entity.Move, error) {
 	var moves []*entity.Move
-	result := r.t.DB(ctx).Where("board_id = ?", boardID).Order("created_at ASC").Find(&moves)
+	result := r.t.DB(ctx).Where("board_id = ?", boardID).Order("id ASC").Find(&moves)
 	return moves, result.Error
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"dooz/internal/app/api/dto"
 	"dooz/internal/app/api/response"
 	"dooz/internal/constants"
 	"dooz/internal/repository/tx"
@@ -56,7 +57,7 @@ func (c *FriendController) GetFriends(ctx *gin.Context) {
 //	@Summary	Get pending friend requests
 //	@Tags		friends
 //	@Security	BearerAuth
-//	@Success	200	{object}	response.Response
+//	@Success	200	{object}	response.Response{data=[]dto.PendingFriendRequestDTO}
 //	@Router		/friends/pending [get]
 func (c *FriendController) GetPendingRequests(ctx *gin.Context) {
 	reqCtx, cancel := context.WithTimeout(ctx.Request.Context(), constants.DefaultRequestTimeout)
@@ -81,6 +82,8 @@ func (c *FriendController) GetPendingRequests(ctx *gin.Context) {
 //	@Summary	Send friend request
 //	@Tags		friends
 //	@Security	BearerAuth
+//	@Param		body	body		dto.SendFriendRequestDTO	true	"Friend request (addressee_id or user_code)"
+//	@Success	201		{object}	response.Response{data=dto.FriendshipDTO}
 //	@Router		/friends/request [post]
 func (c *FriendController) SendRequest(ctx *gin.Context) {
 	reqCtx, cancel := context.WithTimeout(ctx.Request.Context(), constants.DefaultRequestTimeout)
@@ -91,10 +94,12 @@ func (c *FriendController) SendRequest(ctx *gin.Context) {
 		return
 	}
 
-	var body struct {
-		AddresseeID string `json:"addressee_id" binding:"required"`
-	}
+	var body dto.SendFriendRequestDTO
 	if err := ctx.ShouldBindJSON(&body); err != nil {
+		response.ValidationError(ctx, response.ErrInvalidRequest)
+		return
+	}
+	if body.AddresseeID == "" && body.AddresseeCode == nil {
 		response.ValidationError(ctx, response.ErrInvalidRequest)
 		return
 	}
@@ -102,7 +107,7 @@ func (c *FriendController) SendRequest(ctx *gin.Context) {
 	var f interface{}
 	err := c.t.Do(reqCtx, func(txCtx context.Context) error {
 		var err error
-		f, err = c.friendService.SendRequest(txCtx, userIDStr, body.AddresseeID)
+		f, err = c.friendService.SendRequest(txCtx, userIDStr, body.AddresseeID, body.AddresseeCode)
 		return err
 	})
 	if err != nil {

@@ -9,7 +9,7 @@ import (
 
 type Repository interface {
 	Create(ctx context.Context, msg *entity.ChatMessage) error
-	GetDMHistory(ctx context.Context, userA, userB string, limit int, before int64) ([]*entity.ChatMessage, error)
+	GetDMHistory(ctx context.Context, userA, userB string, limit int, beforeID string) ([]*entity.ChatMessage, error)
 	GetGameChatHistory(ctx context.Context, boardID string) ([]*entity.ChatMessage, error)
 	MarkRead(ctx context.Context, senderID, receiverID string) error
 }
@@ -26,23 +26,23 @@ func (r *chatMessageRepository) Create(ctx context.Context, msg *entity.ChatMess
 	return r.t.DB(ctx).Create(msg).Error
 }
 
-func (r *chatMessageRepository) GetDMHistory(ctx context.Context, userA, userB string, limit int, before int64) ([]*entity.ChatMessage, error) {
+func (r *chatMessageRepository) GetDMHistory(ctx context.Context, userA, userB string, limit int, beforeID string) ([]*entity.ChatMessage, error) {
 	var messages []*entity.ChatMessage
 	query := r.t.DB(ctx).
 		Where("((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))",
 			userA, userB, userB, userA)
 
-	if before > 0 {
-		query = query.Where("created_at < ?", before)
+	if beforeID != "" {
+		query = query.Where("id < ?", beforeID)
 	}
 
-	result := query.Order("created_at DESC").Limit(limit).Find(&messages)
+	result := query.Order("id DESC").Limit(limit).Find(&messages)
 	return messages, result.Error
 }
 
 func (r *chatMessageRepository) GetGameChatHistory(ctx context.Context, boardID string) ([]*entity.ChatMessage, error) {
 	var messages []*entity.ChatMessage
-	result := r.t.DB(ctx).Where("board_id = ?", boardID).Order("created_at ASC").Find(&messages)
+	result := r.t.DB(ctx).Where("board_id = ?", boardID).Order("id ASC").Find(&messages)
 	return messages, result.Error
 }
 

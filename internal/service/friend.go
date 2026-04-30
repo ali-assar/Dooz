@@ -13,12 +13,12 @@ import (
 )
 
 type FriendService interface {
-	SendRequest(ctx context.Context, requesterID, addresseeID string) (*dto.FriendshipDTO, error)
+	SendRequest(ctx context.Context, requesterID, addresseeID string, addresseeCode *int) (*dto.FriendshipDTO, error)
 	AcceptRequest(ctx context.Context, friendshipID, userID string) (*dto.FriendshipDTO, error)
 	RejectRequest(ctx context.Context, friendshipID, userID string) error
 	RemoveFriend(ctx context.Context, friendshipID, userID string) error
 	GetFriends(ctx context.Context, userID string) ([]*dto.FriendWithUserDTO, error)
-	GetPendingRequests(ctx context.Context, userID string) ([]*dto.FriendshipDTO, error)
+	GetPendingRequests(ctx context.Context, userID string) ([]*dto.PendingFriendRequestDTO, error)
 }
 
 type friendService struct {
@@ -39,8 +39,20 @@ func NewFriendService(
 	}
 }
 
-func (s *friendService) SendRequest(ctx context.Context, requesterID, addresseeID string) (*dto.FriendshipDTO, error) {
-	lg := s.logger.With("method", "SendRequest", "requesterID", requesterID, "addresseeID", addresseeID)
+func (s *friendService) SendRequest(ctx context.Context, requesterID, addresseeID string, addresseeCode *int) (*dto.FriendshipDTO, error) {
+	lg := s.logger.With("method", "SendRequest", "requesterID", requesterID, "addresseeID", addresseeID, "addresseeCode", addresseeCode)
+
+	if addresseeID == "" && addresseeCode == nil {
+		return nil, appErrors.NewAppError("INVALID_ADDRESSEE", "Addressee id or code is required", 400)
+	}
+
+	if addresseeID == "" {
+		user, err := s.userRepo.GetByUserCode(ctx, *addresseeCode)
+		if err != nil {
+			return nil, userRepo.ErrNotFound
+		}
+		addresseeID = user.ID
+	}
 
 	if requesterID == addresseeID {
 		return nil, appErrors.NewAppError("SELF_FRIEND", "Cannot send friend request to yourself", 400)
@@ -65,7 +77,6 @@ func (s *friendService) SendRequest(ctx context.Context, requesterID, addresseeI
 		RequesterID: requesterID,
 		AddresseeID: addresseeID,
 		Status:      entity.FriendshipPending,
-		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
 
@@ -148,14 +159,25 @@ func (s *friendService) GetFriends(ctx context.Context, userID string) ([]*dto.F
 	return result, nil
 }
 
-func (s *friendService) GetPendingRequests(ctx context.Context, userID string) ([]*dto.FriendshipDTO, error) {
+func (s *friendService) GetPendingRequests(ctx context.Context, userID string) ([]*dto.PendingFriendRequestDTO, error) {
 	friendships, err := s.friendshipRepo.GetPendingForUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]*dto.FriendshipDTO, len(friendships))
-	for i, f := range friendships {
-		result[i] = f.ToDTO()
+
+	result := make([]*dto.PendingFriendRequestDTO, 0, len(friendships))
+	for _, f := range friendships {
+		requester, err := s.userRepo.GetByID(ctx, f.RequesterID)
+		if err != nil {
+			continue
+		}
+		result = append(result, &dto.PendingFriendRequestDTO{
+			ID:          f.ID,
+			Requester:   *requester.ToDTO(),
+			AddresseeID: f.AddresseeID,
+			Status:      f.Status.String(),
+			UpdatedAt:   f.UpdatedAt,
+		})
 	}
 	return result, nil
 }

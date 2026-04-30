@@ -3,6 +3,7 @@ package controllers
 import (
 	"log/slog"
 	"net/http"
+	"time"
 
 	wsHub "dooz/internal/infrastructure/websocket"
 	"dooz/internal/service"
@@ -30,6 +31,10 @@ func NewWSController(hub *wsHub.Hub, userService service.UserService, logger *sl
 }
 
 // HandleWS upgrades the connection to WebSocket and registers the client in the hub.
+// WebSocket server emits:
+// - `presence` payload: { user_id, is_online, last_seen_at }
+// - `chat` payload (DM): { chat_type:"dm", message: ChatMessageDTO }
+// - `chat` payload (game): { chat_type:"game", board_id, message: ChatMessageDTO }
 //
 //	@Summary	WebSocket connection
 //	@Tags		ws
@@ -55,6 +60,7 @@ func (c *WSController) HandleWS(ctx *gin.Context) {
 
 	c.hub.Register(client)
 	_ = c.userService.SetOnline(ctx.Request.Context(), userIDStr, true)
+	c.broadcastPresence(userIDStr, true, 0)
 
 	go client.WritePump()
 
@@ -63,6 +69,7 @@ func (c *WSController) HandleWS(ctx *gin.Context) {
 		c.hub.Unregister(client)
 		conn.Close()
 		_ = c.userService.SetOnline(ctx.Request.Context(), userIDStr, false)
+		c.broadcastPresence(userIDStr, false, time.Now().Unix())
 		c.logger.Info("WebSocket client disconnected", "userID", userIDStr)
 	}()
 
@@ -72,4 +79,17 @@ func (c *WSController) HandleWS(ctx *gin.Context) {
 			break
 		}
 	}
+}
+
+func (c *WSController) broadcastPresence(userID string, isOnline bool, lastSeenAt int64) {
+	connected := c.hub.ConnectedUserIDs()
+	if len(connected) == 0 {
+		return
+	}
+
+	c.hub.SendToUsers(connected, wsHub.TypePresence, map[string]interface{}{
+		"user_id":      userID,
+		"is_online":    isOnline,
+		"last_seen_at": lastSeenAt,
+	})
 }

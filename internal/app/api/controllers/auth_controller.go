@@ -56,7 +56,7 @@ func (c *AuthController) Login(ctx *gin.Context) {
 	var tokenPair *service.TokenPair
 	err := c.t.Do(reqCtx, func(txCtx context.Context) error {
 		var err error
-		tokenPair, err = c.authService.Login(txCtx, req.Email, req.Password, clientIP, deviceType, req.Remember)
+		tokenPair, err = c.authService.Login(txCtx, req.Phone, req.Password, clientIP, deviceType, req.Remember)
 		return err
 	})
 	if err != nil {

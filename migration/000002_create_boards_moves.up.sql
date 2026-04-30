@@ -10,7 +10,6 @@ CREATE TABLE boards (
     current_turn    UUID REFERENCES users(id),
     started_at      BIGINT,
     ended_at        BIGINT,
-    created_at      BIGINT NOT NULL,
     updated_at      BIGINT NOT NULL
 );
 
@@ -23,8 +22,7 @@ CREATE TABLE moves (
     board_id    UUID NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
     user_id     UUID NOT NULL REFERENCES users(id),
     position    SMALLINT NOT NULL,  -- 0-8
-    symbol      CHAR(1) NOT NULL,   -- 'X' or 'O'
-    created_at  BIGINT NOT NULL
+    symbol      CHAR(1) NOT NULL    -- 'X' or 'O'
 );
 
-CREATE INDEX idx_moves_board ON moves (board_id, created_at ASC);
+CREATE INDEX idx_moves_board ON moves (board_id, id ASC);

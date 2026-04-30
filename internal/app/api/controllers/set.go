@@ -12,6 +12,7 @@ var ControllerSet = wire.NewSet(
 	NewChatController,
 	NewLeaderboardController,
 	NewAchievementController,
+	NewShopController,
 	NewWSController,
 	NewCronController,
 )

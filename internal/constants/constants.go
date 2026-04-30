@@ -63,7 +63,7 @@ const (
 )
 
 // MatchmakingTimeout is how long we wait for an opponent before assigning a bot.
-const MatchmakingTimeout = 20 * time.Second
+const MatchmakingTimeout = 5 * time.Second
 
 // MatchmakingPollInterval is how often we check the Redis queue for a new opponent.
 const MatchmakingPollInterval = 500 * time.Millisecond

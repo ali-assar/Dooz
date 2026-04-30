@@ -134,10 +134,12 @@ func (b *Boot) initializeSuperAdmin() {
 		Email:           b.env.SuperAdminEmail,
 		Fullname:        "Super Admin",
 		PasswordHash:    encrypt.HashSHA256(b.env.SuperAdminPassword),
+		UserCode:        900000,
 		Role:            entity.RoleSuperAdmin,
 		IsEmailVerified: true,
-		Avatar:          "",
-		CreatedAt:       now,
+		CurrentTheme:    1,
+		CurrentXOShape:  1,
+		CurrentAvatar:   1,
 		UpdatedAt:       now,
 	}
 	if b.env.SuperAdminPhone != "" {

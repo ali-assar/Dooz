@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/big"
 	"time"
 
 	"dooz/entity"
@@ -14,6 +15,7 @@ import (
 	"dooz/internal/infrastructure/godotenv"
 	otpRepo "dooz/internal/repository/otp"
 	sessionRepo "dooz/internal/repository/session"
+	"dooz/internal/repository/tx"
 	userRepo "dooz/internal/repository/user"
 	"dooz/utils/encrypt"
 
@@ -29,7 +31,7 @@ type TokenPair struct {
 }
 
 type AuthService interface {
-	Login(ctx context.Context, email string, password string, ip string, deviceType entity.DeviceType, remember bool) (*TokenPair, error)
+	Login(ctx context.Context, phone string, password string, ip string, deviceType entity.DeviceType, remember bool) (*TokenPair, error)
 	Logout(ctx context.Context, userID string, deviceType entity.DeviceType) error
 	Register(ctx context.Context, phone string, email string, fullname string) error
 	SetPassword(ctx context.Context, phone string, password string, ip string, deviceType entity.DeviceType, remember bool) (*TokenPair, error)
@@ -48,16 +50,28 @@ type authService struct {
 	userRepo    userRepo.Repository
 	sessionRepo sessionRepo.Repository
 	otpRepo     otpRepo.Repository
+	shopService ShopService
+	t           tx.Transaction
 	secret      string
 }
 
-func NewAuthService(env *godotenv.Env, logger *slog.Logger, userRepo userRepo.Repository, sessionRepo sessionRepo.Repository, otpRepo otpRepo.Repository) AuthService {
+func NewAuthService(
+	env *godotenv.Env,
+	logger *slog.Logger,
+	userRepo userRepo.Repository,
+	sessionRepo sessionRepo.Repository,
+	otpRepo otpRepo.Repository,
+	shopService ShopService,
+	t tx.Transaction,
+) AuthService {
 	return &authService{
 		env:         env,
 		logger:      logger.With("layer", "AuthService"),
 		userRepo:    userRepo,
 		sessionRepo: sessionRepo,
 		otpRepo:     otpRepo,
+		shopService: shopService,
+		t:           t,
 		secret:      env.Secret,
 	}
 }
@@ -79,7 +93,6 @@ func (a *authService) sendOTP(ctx context.Context, recipient string, channel ent
 		Code:       code,
 		Purpose:    purpose,
 		ExpiresAt:  now.Add(constants.OTPExpiration).Unix(),
-		CreatedAt:  now.Unix(),
 		Status:     entity.OTPStatusPending,
 		RetryCount: 0,
 	}
@@ -144,10 +157,10 @@ func (a *authService) VerifyEmailOTP(ctx context.Context, email string, code str
 	return a.verifyOTP(ctx, email, entity.OTPChannelEmail, code, purpose)
 }
 
-func (a *authService) Login(ctx context.Context, email, password, ip string, deviceType entity.DeviceType, remember bool) (*TokenPair, error) {
-	lg := a.logger.With("method", "Login", "email", email)
+func (a *authService) Login(ctx context.Context, phone, password, ip string, deviceType entity.DeviceType, remember bool) (*TokenPair, error) {
+	lg := a.logger.With("method", "Login", "phone", phone)
 
-	fetchedUser, err := a.userRepo.GetByEmail(ctx, email)
+	fetchedUser, err := a.userRepo.GetByPhone(ctx, phone)
 	if err != nil {
 		lg.Warn("user not found")
 		return nil, appErrors.ErrUnauthorized
@@ -183,19 +196,33 @@ func (a *authService) Register(ctx context.Context, phone, email, fullname strin
 		return userRepo.ErrDuplicateEmail
 	}
 
-	now := time.Now().Unix()
-	newUser := &entity.User{
-		Phone:     phone,
-		Email:     email,
-		Fullname:  fullname,
-		Role:      entity.RoleUser,
-		Avatar:    "",
-		CreatedAt: now,
-		UpdatedAt: now,
+	userCode, err := a.generateUserCode(ctx)
+	if err != nil {
+		lg.Error("failed to generate user code", "error", err)
+		return err
 	}
 
-	if err := a.userRepo.Create(ctx, newUser); err != nil {
-		lg.Error("failed to create user", "error", err)
+	var newUser *entity.User
+	if err := a.t.Do(ctx, func(txCtx context.Context) error {
+		now := time.Now().Unix()
+		newUser = &entity.User{
+			Phone:          phone,
+			Email:          email,
+			Fullname:       fullname,
+			UserCode:       userCode,
+			Role:           entity.RoleUser,
+			CurrentTheme:   1,
+			CurrentXOShape: 1,
+			CurrentAvatar:  1,
+			UpdatedAt:      now,
+		}
+
+		if err := a.userRepo.Create(txCtx, newUser); err != nil {
+			return err
+		}
+		return a.shopService.GrantDefaultItems(txCtx, newUser.ID)
+	}); err != nil {
+		lg.Error("failed to create user with default inventory", "error", err)
 		return err
 	}
 
@@ -206,6 +233,25 @@ func (a *authService) Register(ctx context.Context, phone, email, fullname strin
 
 	lg.Info("user registered")
 	return nil
+}
+
+func (a *authService) generateUserCode(ctx context.Context) (int, error) {
+	const maxAttempts = 20
+	upperBound := big.NewInt(900000)
+	for i := 0; i < maxAttempts; i++ {
+		n, err := rand.Int(rand.Reader, upperBound)
+		if err != nil {
+			return 0, err
+		}
+		code := 100000 + int(n.Int64())
+		if _, err := a.userRepo.GetByUserCode(ctx, code); err != nil {
+			if errors.Is(err, userRepo.ErrNotFound) {
+				return code, nil
+			}
+			return 0, err
+		}
+	}
+	return 0, appErrors.NewAppError("USER_CODE_GENERATION_FAILED", "Failed to generate unique user code", 500)
 }
 
 func (a *authService) SetPassword(ctx context.Context, phone, password, ip string, deviceType entity.DeviceType, remember bool) (*TokenPair, error) {
@@ -297,8 +343,6 @@ func (a *authService) createTokens(ctx context.Context, user *entity.User, ip st
 		"Phone":     user.Phone,
 		"Email":     user.Email,
 		"Fullname":  user.Fullname,
-		"Avatar":    user.Avatar,
-		"CreatedAt": user.CreatedAt,
 		"UpdatedAt": user.UpdatedAt,
 	}
 
@@ -341,7 +385,6 @@ func (a *authService) createTokens(ctx context.Context, user *entity.User, ip st
 		ExpiresAt:        refreshExpiresAt.Unix(),
 		IPAddress:        ipAddress,
 		LastActivityAt:   nowUnix,
-		CreatedAt:        nowUnix,
 	}
 
 	if err := a.sessionRepo.Create(ctx, newSession); err != nil {
@@ -406,8 +449,6 @@ func (a *authService) RefreshToken(ctx context.Context, refreshToken string) (*T
 		"Phone":     user.Phone,
 		"Email":     user.Email,
 		"Fullname":  user.Fullname,
-		"Avatar":    user.Avatar,
-		"CreatedAt": user.CreatedAt,
 		"UpdatedAt": user.UpdatedAt,
 	}
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)

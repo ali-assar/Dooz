@@ -24,16 +24,18 @@ func Run(db *gorm.DB, logger *slog.Logger, count int) error {
 			Fullname:        fmt.Sprintf("User %d", i+1),
 			PasswordHash:    encrypt.HashSHA256("password123"),
 			Phone:           fmt.Sprintf("09%09d", rand.Intn(1000000000)),
+			UserCode:        100000 + i,
 			Role:            entity.RoleUser,
 			IsEmailVerified: true,
 			IsPhoneVerified: true,
-			Avatar:          "",
+			CurrentTheme:    1,
+			CurrentXOShape:  1,
+			CurrentAvatar:   1,
 			Coins:           rand.Intn(500),
 			Gems:            rand.Intn(50),
 			Wins:            rand.Intn(100),
 			Losses:          rand.Intn(100),
 			Draws:           rand.Intn(30),
-			CreatedAt:       now,
 			UpdatedAt:       now,
 		}
 
@@ -47,5 +49,3 @@ func Run(db *gorm.DB, logger *slog.Logger, count int) error {
 	lg.Info("seeding complete")
 	return nil
 }
-
- 

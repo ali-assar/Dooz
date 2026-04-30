@@ -32,7 +32,6 @@ type OTP struct {
 	Status      OTPStatus  `gorm:"column:status;type:smallint;not null;default:0" json:"status"`
 	RetryCount  int        `gorm:"column:retry_count;type:smallint;not null;default:0" json:"retry_count"`
 	NextRetryAt int64      `gorm:"column:next_retry_at;type:bigint" json:"next_retry_at"`
-	CreatedAt   int64      `gorm:"column:created_at;type:bigint;not null" json:"created_at"`
 	ProcessedAt int64      `gorm:"column:processed_at;type:bigint" json:"processed_at"`
 }
 

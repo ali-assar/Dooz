@@ -31,7 +31,6 @@ type Friendship struct {
 	RequesterID string           `gorm:"column:requester_id;type:uuid;not null" json:"requester_id"`
 	AddresseeID string           `gorm:"column:addressee_id;type:uuid;not null" json:"addressee_id"`
 	Status      FriendshipStatus `gorm:"type:smallint;not null;default:1" json:"status"`
-	CreatedAt   int64            `gorm:"column:created_at;type:bigint;not null" json:"created_at"`
 	UpdatedAt   int64            `gorm:"column:updated_at;type:bigint;not null" json:"updated_at"`
 }
 
@@ -45,7 +44,6 @@ func (f *Friendship) ToDTO() *dto.FriendshipDTO {
 		RequesterID: f.RequesterID,
 		AddresseeID: f.AddresseeID,
 		Status:      f.Status.String(),
-		CreatedAt:   f.CreatedAt,
 		UpdatedAt:   f.UpdatedAt,
 	}
 }

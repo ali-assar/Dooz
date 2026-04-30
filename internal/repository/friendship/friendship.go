@@ -108,7 +108,7 @@ func (r *friendshipRepository) GetPendingForUser(ctx context.Context, userID str
 	var friendships []*entity.Friendship
 	result := r.t.DB(ctx).
 		Where("addressee_id = ? AND status = ?", userID, entity.FriendshipPending).
-		Order("created_at DESC").Find(&friendships)
+		Order("id DESC").Find(&friendships)
 	return friendships, result.Error
 }
 

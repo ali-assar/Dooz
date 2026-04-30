@@ -55,7 +55,7 @@ func (r *otpRepository) GetLatestByRecipient(ctx context.Context, recipient stri
 	var otp entity.OTP
 	result := r.t.DB(ctx).
 		Where("recipient = ? AND channel = ? AND purpose = ?", recipient, channel, purpose).
-		Order("created_at DESC").First(&otp)
+		Order("id DESC").First(&otp)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, ErrNotFound
@@ -70,7 +70,7 @@ func (r *otpRepository) GetPendingOTPs(ctx context.Context, limit int) ([]*entit
 	var otps []*entity.OTP
 	result := r.t.DB(ctx).
 		Where("status = ? AND (next_retry_at IS NULL OR next_retry_at <= ?)", entity.OTPStatusPending, now).
-		Order("created_at ASC").Limit(limit).Find(&otps)
+		Order("id ASC").Limit(limit).Find(&otps)
 	return otps, result.Error
 }
 
@@ -117,7 +117,7 @@ func (r *otpRepository) VerifyAndDelete(ctx context.Context, recipient string, c
 	var otp entity.OTP
 	result := r.t.DB(ctx).
 		Where("recipient = ? AND channel = ? AND purpose = ? AND status = ?", recipient, channel, purpose, entity.OTPStatusSent).
-		Order("created_at DESC").First(&otp)
+		Order("id DESC").First(&otp)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return ErrNotFound

@@ -8,11 +8,13 @@ var ServiceSet = wire.NewSet(
 	NewAuthService,
 	NewUserService,
 	NewGameService,
+	NewGameChallengeService,
 	NewMatchmakingService,
 	NewFriendService,
 	NewChatService,
 	NewLeaderboardService,
 	NewAchievementService,
+	NewShopService,
 	NewOTPOutboxServiceWithDefaults,
 	NewTurnstileService,
 )
