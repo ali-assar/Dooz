@@ -22,20 +22,23 @@ type FriendService interface {
 }
 
 type friendService struct {
-	friendshipRepo friendshipRepo.Repository
-	userRepo       userRepo.Repository
-	logger         *slog.Logger
+	friendshipRepo     friendshipRepo.Repository
+	userRepo           userRepo.Repository
+	achievementService AchievementService
+	logger             *slog.Logger
 }
 
 func NewFriendService(
 	friendshipRepo friendshipRepo.Repository,
 	userRepo userRepo.Repository,
+	achievementService AchievementService,
 	logger *slog.Logger,
 ) FriendService {
 	return &friendService{
-		friendshipRepo: friendshipRepo,
-		userRepo:       userRepo,
-		logger:         logger.With("layer", "FriendService"),
+		friendshipRepo:     friendshipRepo,
+		userRepo:           userRepo,
+		achievementService: achievementService,
+		logger:             logger.With("layer", "FriendService"),
 	}
 }
 
@@ -105,6 +108,11 @@ func (s *friendService) AcceptRequest(ctx context.Context, friendshipID, userID 
 
 	if err := s.friendshipRepo.Update(ctx, f); err != nil {
 		return nil, err
+	}
+	for _, uid := range []string{f.RequesterID, f.AddresseeID} {
+		if err := s.achievementService.CheckAndAward(ctx, uid); err != nil {
+			s.logger.Warn("achievement check failed", "method", "AcceptRequest", "userID", uid, "error", err)
+		}
 	}
 	return f.ToDTO(), nil
 }

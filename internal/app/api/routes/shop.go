@@ -26,6 +26,7 @@ func (r *ShopRoutes) SetupRoutes(router *gin.RouterGroup) {
 	auth := router.Group("")
 	auth.Use(r.authMiddleware.RequireAuth())
 	{
+		auth.GET("/items/by-key/:itemKey", r.shopController.GetItemByKey)
 		auth.GET("/items", r.shopController.GetItems)
 		auth.GET("/inventory", r.shopController.GetMyInventory)
 		auth.POST("/purchase", r.shopController.Purchase)

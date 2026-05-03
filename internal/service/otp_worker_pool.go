@@ -201,7 +201,14 @@ func (p *OTPWorkerPool) processOTP(ctx context.Context, otp *entity.OTP) error {
 }
 
 func (p *OTPWorkerPool) handleRetry(ctx context.Context, otp *entity.OTP) error {
-	newRetryCount := otp.RetryCount + 1
+	newRetryCount, err := p.otpRepo.IncrementRetryCount(ctx, otp.ID)
+	if err != nil {
+		p.logger.Error("failed to increment OTP retry count",
+			"otpID", otp.ID,
+			"error", err,
+		)
+		return err
+	}
 
 	// Check if max retries exceeded
 	if newRetryCount >= constants.MaxOTPRetries {

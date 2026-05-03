@@ -13,6 +13,7 @@ import (
 
 type ShopService interface {
 	GetItems(ctx context.Context) ([]*dto.StoreItemDTO, error)
+	GetItemByKey(ctx context.Context, itemKey string) (*dto.StoreItemDTO, error)
 	GetInventory(ctx context.Context, userID string) (*dto.InventoryDTO, error)
 	Purchase(ctx context.Context, userID string, itemType byte, itemValue int) error
 	UpdateCurrentStyle(ctx context.Context, userID string, req *dto.UpdateCurrentStyleRequest) error
@@ -56,6 +57,22 @@ func (s *shopService) GetItems(ctx context.Context) ([]*dto.StoreItemDTO, error)
 		}
 	}
 	return out, nil
+}
+
+func (s *shopService) GetItemByKey(ctx context.Context, itemKey string) (*dto.StoreItemDTO, error) {
+	item, err := s.storeItemRepo.GetByKey(ctx, itemKey)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.StoreItemDTO{
+		ID:            item.ID,
+		ItemType:      int(item.ItemType),
+		ItemValue:     item.ItemValue,
+		ItemKey:       item.ItemKey,
+		AssetURL:      item.AssetURL,
+		PriceCurrency: int(item.PriceCurrency),
+		PriceAmount:   item.PriceAmount,
+	}, nil
 }
 
 func (s *shopService) GetInventory(ctx context.Context, userID string) (*dto.InventoryDTO, error) {

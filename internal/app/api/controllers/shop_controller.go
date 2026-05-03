@@ -46,6 +46,31 @@ func (c *ShopController) GetItems(ctx *gin.Context) {
 	response.SuccessWithData(ctx, 200, items)
 }
 
+// GetItemByKey returns one active catalog item by stable item_key.
+//
+//	@Summary	Get shop item by key
+//	@Tags		shop
+//	@Security	BearerAuth
+//	@Param		itemKey	path		string	true	"Item key (e.g. catalog slug)"
+//	@Success	200		{object}	response.Response{data=dto.StoreItemDTO}
+//	@Router		/shop/items/by-key/{itemKey} [get]
+func (c *ShopController) GetItemByKey(ctx *gin.Context) {
+	reqCtx, cancel := context.WithTimeout(ctx.Request.Context(), constants.DefaultRequestTimeout)
+	defer cancel()
+
+	itemKey := ctx.Param("itemKey")
+	if itemKey == "" {
+		response.ValidationError(ctx, response.ErrInvalidRequest)
+		return
+	}
+	item, err := c.shopService.GetItemByKey(reqCtx, itemKey)
+	if err != nil {
+		_ = ctx.Error(err)
+		return
+	}
+	response.SuccessWithData(ctx, 200, item)
+}
+
 // GetMyInventory returns the authenticated user's owned items.
 //
 //	@Summary	Get my inventory

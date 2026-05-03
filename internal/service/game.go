@@ -23,26 +23,29 @@ type GameService interface {
 }
 
 type gameService struct {
-	boardRepo boardRepo.Repository
-	moveRepo  moveRepo.Repository
-	userRepo  userRepo.Repository
-	hub       *wsHub.Hub
-	logger    *slog.Logger
+	boardRepo          boardRepo.Repository
+	moveRepo           moveRepo.Repository
+	userRepo           userRepo.Repository
+	achievementService AchievementService
+	hub                *wsHub.Hub
+	logger             *slog.Logger
 }
 
 func NewGameService(
 	boardRepo boardRepo.Repository,
 	moveRepo moveRepo.Repository,
 	userRepo userRepo.Repository,
+	achievementService AchievementService,
 	hub *wsHub.Hub,
 	logger *slog.Logger,
 ) GameService {
 	return &gameService{
-		boardRepo: boardRepo,
-		moveRepo:  moveRepo,
-		userRepo:  userRepo,
-		hub:       hub,
-		logger:    logger.With("layer", "GameService"),
+		boardRepo:          boardRepo,
+		moveRepo:           moveRepo,
+		userRepo:           userRepo,
+		achievementService: achievementService,
+		hub:                hub,
+		logger:             logger.With("layer", "GameService"),
 	}
 }
 
@@ -209,6 +212,16 @@ func (s *gameService) updatePlayerStats(ctx context.Context, board *entity.Board
 		}
 	}
 	lg.Info("player stats updated")
+
+	awardees := []string{playerX}
+	if playerO != "" && !board.IsBotGame {
+		awardees = append(awardees, playerO)
+	}
+	for _, uid := range awardees {
+		if err := s.achievementService.CheckAndAward(ctx, uid); err != nil {
+			lg.Warn("achievement check failed", "userID", uid, "error", err)
+		}
+	}
 }
 
 func (s *gameService) Resign(ctx context.Context, boardID, userID string) (*dto.BoardDTO, error) {
